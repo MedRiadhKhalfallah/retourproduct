@@ -4,9 +4,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         nginx curl git unzip \
-        libsqlite3-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev \
+        libsqlite3-dev libpq-dev libzip-dev libpng-dev libjpeg-dev libfreetype6-dev libonig-dev libxml2-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" pdo pdo_sqlite mbstring xml bcmath gd zip exif pcntl \
+    && docker-php-ext-install -j"$(nproc)" pdo pdo_sqlite pdo_pgsql mbstring xml bcmath gd zip exif pcntl \
     && rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/default
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer

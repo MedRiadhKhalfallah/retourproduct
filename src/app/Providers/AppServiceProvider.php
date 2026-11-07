@@ -22,9 +22,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-// Force HTTPS en production (derrière le proxy de Render)
-    if ($this->app->environment('production')) {
-        URL::forceScheme('https');
+        Item::observe(ItemObserver::class);
+
+        // Force HTTPS en production (derrière le proxy de l'hébergeur)
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
-}
 }

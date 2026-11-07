@@ -137,6 +137,16 @@ class AuthenticationAndItemHistoryTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
+    public function test_database_seeder_can_run_repeatedly_without_duplicates(): void
+    {
+        $this->seed();
+        $this->seed();
+
+        $this->assertSame(2, User::count());
+        $this->assertSame(1, Pallet::where('reference', 'AMZ-0001')->count());
+        $this->assertSame(3, Pallet::where('reference', 'AMZ-0001')->first()->items()->count());
+    }
+
     public function test_history_user_is_set_null_when_user_is_deleted(): void
     {
         $user = User::factory()->create();
