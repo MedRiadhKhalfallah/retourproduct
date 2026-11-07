@@ -18,17 +18,20 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-COPY . .
+# On copie tout le contenu du dossier 'src' (là où il y a Laravel) directement à la racine du conteneur (/var/www/html)
+COPY src/ .
 
-RUN composer install --no-dev --optimize-autoloader
-
+# Copier la configuration Nginx depuis le dossier docker du dépôt
 COPY docker/nginx/default.conf /etc/nginx/sites-available/default
 
+# Installer les dépendances Composer
+RUN composer install --no-dev --optimize-autoloader
+
+# Préparer SQLite et les permissions
 RUN mkdir -p /var/www/html/database && \
     touch /var/www/html/database/database.sqlite && \
     chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
 
-# Render gère son propre port via la variable $PORT
 EXPOSE 10000
 
 CMD sed -i "s/_PORT_PLACEHOLDER_/$PORT/g" /etc/nginx/sites-available/default && \
