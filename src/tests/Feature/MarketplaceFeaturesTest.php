@@ -1,0 +1,171 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Item;
+use App\Models\Pallet;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+class MarketplaceFeaturesTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->actingAs(User::factory()->create());
+    }
+
+    private static function png(string $name): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent($name, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+    }
+
+    private function pallet(): Pallet
+    {
+        return Pallet::create([
+            'reference' => 'P-1', 'supplier_name' => 'X', 'total_cost' => 100, 'purchase_date' => now(),
+        ]);
+    }
+
+    public function test_pallet_attachments_upload_view_download_and_scoping(): void
+    {
+        Storage::fake('local');
+        $pallet = $this->pallet();
+
+        $this->post(route('pallets.attachments.store', $pallet), [
+            'attachments' => [UploadedFile::fake()->create('facture.pdf', 50, 'application/pdf'), self::png('recu.png')],
+        ])->assertSessionHasNoErrors();
+
+        $a = $pallet->attachments()->first();
+        $this->assertCount(2, $pallet->attachments);
+        Storage::disk('local')->assertExists($a->path);
+        $this->assertStringStartsWith("pallets/{$pallet->id}/", $a->path);
+
+        $this->get(route('pallets.attachments.show', [$pallet, $a]))->assertOk();
+        $this->get(route('pallets.attachments.download', [$pallet, $a]))->assertOk()->assertDownload('facture.pdf');
+        $this->get(route('pallets.show', $pallet))->assertOk()->assertSee('facture.pdf');
+
+        $other = Pallet::create(['reference' => 'P-2', 'supplier_name' => 'Y', 'total_cost' => 1, 'purchase_date' => now()]);
+        $this->get(route('pallets.attachments.download', [$other, $a]))->assertNotFound();
+
+        $this->post(route('pallets.attachments.store', $pallet), [
+            'attachments' => [UploadedFile::fake()->create('virus.exe', 5)],
+        ])->assertSessionHasErrors('attachments.0');
+
+        $this->delete(route('pallets.attachments.destroy', [$pallet, $a]));
+        Storage::disk('local')->assertMissing($a->path);
+    }
+
+    public function test_item_create_with_photo_and_sale_rules(): void
+    {
+        Storage::fake('public');
+        $pallet = $this->pallet();
+
+        $this->post(route('pallets.items.store', $pallet), [
+            'name' => 'Lampe', 'condition' => 'used', 'status' => 'pret_a_vendre',
+            'asking_price' => 50, 'bottom_price' => 30, 'marketplace_url' => 'kijiji.ca/abc',
+            'inspection_notes' => 'Testée OK', 'issues_description' => 'Rayure',
+            'image' => self::png('p.png'),
+        ])->assertSessionHasNoErrors();
+
+        $item = Item::first();
+        $this->assertSame('https://kijiji.ca/abc', $item->marketplace_url);
+        Storage::disk('public')->assertExists($item->image_path);
+        $this->assertStringContainsString('Rayure', $item->listing_description);
+
+        $this->put(route('items.update', $item), ['name' => 'Lampe', 'condition' => 'used', 'status' => 'vendu'])
+            ->assertSessionHasErrors('final_sale_price');
+        $this->put(route('items.update', $item), ['name' => 'Lampe', 'condition' => 'used', 'status' => 'vendu', 'final_sale_price' => 45])
+            ->assertSessionHasNoErrors();
+        $this->assertNotNull($item->fresh()->sale_date);
+        $this->assertSame(45.0, $pallet->fresh()->load('items')->revenue);
+
+        $this->put(route('items.update', $item), ['name' => 'Lampe', 'condition' => 'used', 'asking_price' => 10, 'bottom_price' => 20, 'status' => 'pret_a_vendre'])
+            ->assertSessionHasErrors('bottom_price');
+
+        $this->get(route('items.show', ['item' => $item, 'mode' => 'lecture']))->assertOk()->assertSee('Copier')->assertSee('Lampe');
+        $this->get(route('items.index'))->assertOk();
+        $this->get('/')->assertOk();
+    }
+
+    public function test_pallet_financial_report_uses_allocated_costs_actual_revenue_and_unsold_targets(): void
+    {
+        $pallet = $this->pallet();
+        $assignee = User::factory()->create(['name' => 'Ahmed']);
+
+        $pallet->items()->createMany([
+            [
+                'name' => 'Vendu à perte',
+                'condition' => 'used',
+                'status' => 'vendu',
+                'estimated_msrp' => 300,
+                'asking_price' => 100,
+                'final_sale_price' => 50,
+                'sale_date' => now()->toDateString(),
+            ],
+            [
+                'name' => 'Encore en stock',
+                'condition' => 'used',
+                'status' => 'pret_a_vendre',
+                'estimated_msrp' => 100,
+                'asking_price' => 40,
+                'assigned_to' => $assignee->id,
+            ],
+        ]);
+        $pallet->allocateCosts();
+        $pallet->load('items.assignedUser');
+
+        $report = $pallet->financialReport();
+        $this->assertSame(100.0, $report['purchase_total']);
+        $this->assertSame(50.0, $report['revenue_total']);
+        $this->assertSame(50.0, $report['average_purchase_price']);
+        $this->assertSame(50.0, $report['average_sale_price']);
+        $this->assertSame(-50.0, $report['net_profit']);
+
+        $sold = $report['items']->firstWhere('item.name', 'Vendu à perte');
+        $unsold = $report['items']->firstWhere('item.name', 'Encore en stock');
+        $this->assertSame(75.0, $sold['purchase_price']);
+        $this->assertSame(50.0, $sold['sale_price']);
+        $this->assertSame(-25.0, $sold['profit']);
+        $this->assertFalse($sold['sale_is_estimate']);
+        $this->assertSame(25.0, $unsold['purchase_price']);
+        $this->assertSame(40.0, $unsold['sale_price']);
+        $this->assertSame(15.0, $unsold['profit']);
+        $this->assertTrue($unsold['sale_is_estimate']);
+
+        $this->get(route('pallets.show', $pallet))
+            ->assertOk()
+            ->assertSee('Rapport financier par palette')
+            ->assertSee('Vendu à perte')
+            ->assertSee('Encore en stock')
+            ->assertSee('Ahmed')
+            ->assertSee('text-rose-600')
+            ->assertSee('Bilan global de la palette')
+            ->assertSee('Perte');
+    }
+
+    public function test_stock_filters_by_assignee_and_pages_show_breadcrumbs(): void
+    {
+        $pallet = $this->pallet();
+        $riadh = User::factory()->create(['name' => 'Riadh', 'email' => 'riadh@example.com']);
+        $pallet->items()->create(['name' => 'Article de Riadh', 'assigned_to' => $riadh->id]);
+        $pallet->items()->create(['name' => 'Article libre']);
+
+        $this->get(route('items.index', ['assigned_to' => $riadh->id]))
+            ->assertOk()
+            ->assertSee('Article de Riadh')
+            ->assertDontSee('Article libre')
+            ->assertSee('Dashboard Financier');
+
+        $this->get(route('items.index', ['assigned_to' => 999]))->assertSessionHasErrors('assigned_to');
+        $this->get(route('items.show', $pallet->items()->first()))
+            ->assertSee('aria-current="page"', false)
+            ->assertSee(route('pallets.show', $pallet), false);
+    }
+}
