@@ -22,7 +22,7 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader
 
-COPY docker/nginx.conf /etc/nginx/sites-available/default
+COPY docker/nginx/default.conf /etc/nginx/sites-available/default
 
 RUN mkdir -p /var/www/html/database && \
     touch /var/www/html/database/database.sqlite && \
