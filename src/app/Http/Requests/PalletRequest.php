@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PalletRequest extends FormRequest
 {
@@ -13,10 +14,8 @@ class PalletRequest extends FormRequest
 
     public function rules(): array
     {
-        $id = $this->route('pallet')?->id;
-
         return [
-            'reference' => ['required', 'string', 'max:100', "unique:pallets,reference,{$id}"],
+            'reference' => ['required', 'string', 'max:100', Rule::unique('pallets', 'reference')->ignore($this->route('pallet'))],
             'supplier_name' => ['required', 'string', 'max:150'],
             'total_cost' => ['required', 'numeric', 'min:0'],
             'purchase_date' => ['required', 'date'],
