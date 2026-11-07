@@ -19,8 +19,8 @@ php artisan route:cache
 php artisan view:cache
 php artisan storage:link --force || true
 php artisan migrate --force
-# UserSeeder est idempotent (comptes Riadh/Ahmed) ; DatabaseSeeder créerait des données de démo à chaque démarrage
-php artisan db:seed --class=UserSeeder --force
+# Idempotent : firstOrCreate des comptes Riadh/Ahmed, aucune donnée de démo
+php artisan db:seed --force
 
 php-fpm -D
 exec nginx -g 'daemon off;'

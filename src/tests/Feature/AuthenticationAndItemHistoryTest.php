@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Pallet;
 use App\Models\User;
-use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -26,7 +25,7 @@ class AuthenticationAndItemHistoryTest extends TestCase
 
     public function test_only_the_two_seeded_users_can_log_in_and_log_out(): void
     {
-        $this->seed(UserSeeder::class);
+        $this->seed();
         $this->assertDatabaseCount('users', 2);
 
         $riadh = User::where('email', 'riadh@example.com')->firstOrFail();
@@ -49,7 +48,7 @@ class AuthenticationAndItemHistoryTest extends TestCase
         $this->post(route('logout'))->assertRedirect(route('login'));
         $this->assertGuest();
 
-        $this->seed(UserSeeder::class);
+        $this->seed();
         $this->assertDatabaseCount('users', 2);
     }
 
@@ -137,14 +136,15 @@ class AuthenticationAndItemHistoryTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
-    public function test_database_seeder_can_run_repeatedly_without_duplicates(): void
+    public function test_database_seeder_only_creates_the_two_users_and_never_overwrites_them(): void
     {
         $this->seed();
+        User::where('email', 'riadh@example.com')->update(['name' => 'Changé']);
         $this->seed();
 
         $this->assertSame(2, User::count());
-        $this->assertSame(1, Pallet::where('reference', 'AMZ-0001')->count());
-        $this->assertSame(3, Pallet::where('reference', 'AMZ-0001')->first()->items()->count());
+        $this->assertSame('Changé', User::where('email', 'riadh@example.com')->value('name'));
+        $this->assertSame(0, Pallet::count());
     }
 
     public function test_history_user_is_set_null_when_user_is_deleted(): void

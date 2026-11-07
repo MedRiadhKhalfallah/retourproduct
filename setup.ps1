@@ -15,6 +15,6 @@ Write-Host "Generation de la cle d'application Laravel..." -ForegroundColor Cyan
 docker compose exec app php artisan key:generate
 
 Write-Host "Execution des migrations et seeders de base de donnees..." -ForegroundColor Cyan
-docker compose exec app php artisan migrate:fresh --seed
+docker compose exec app php artisan migrate --seed --force
 
 Write-Host "Installation et configuration terminees avec succes !" -ForegroundColor Green

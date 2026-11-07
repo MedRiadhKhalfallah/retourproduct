@@ -16,6 +16,6 @@ cp -n .env.example src/.env || true
 docker compose exec app composer install --no-interaction
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan storage:link || true
-docker compose exec app php artisan migrate:fresh --seed --force
+docker compose exec app php artisan migrate --seed --force
 
 echo "App: http://localhost:8456  |  phpMyAdmin: http://localhost:8081"
