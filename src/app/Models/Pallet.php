@@ -51,14 +51,17 @@ class Pallet extends Model
         return [
             'items' => $items->map(function (Item $item): array {
                 $isSold = $item->status === ItemStatus::Sold;
-                $salePrice = $isSold ? $item->final_sale_price : $item->asking_price;
+                $hasZeroResaleValue = $item->status->hasZeroResaleValue();
+                $salePrice = $item->sale_value;
                 $purchasePrice = (float) $item->purchase_cost_share;
 
                 return [
                     'item' => $item,
                     'purchase_price' => $purchasePrice,
                     'sale_price' => $salePrice === null ? null : (float) $salePrice,
-                    'sale_is_estimate' => ! $isSold,
+                    'sale_is_estimate' => ! $isSold && ! $hasZeroResaleValue,
+                    'sale_label' => $hasZeroResaleValue ? 'Valeur retenue' : ($isSold ? 'Prix final' : 'Prix cible'),
+                    'profit_label' => $hasZeroResaleValue ? 'Perte calculée' : ($isSold ? 'Gain / perte' : 'Gain estimé / perte estimée'),
                     'profit' => $salePrice === null ? null : round((float) $salePrice - $purchasePrice, 2),
                 ];
             }),

@@ -175,12 +175,15 @@
         <h2 class="font-semibold mb-2">Finances</h2>
         <div class="flex justify-between"><span class="text-slate-500">MSRP estimé</span><span>{{ $money($item->estimated_msrp) }}</span></div>
         <div class="flex justify-between"><span class="text-slate-500">Prix d'achat unitaire</span><span>{{ $money($item->purchase_cost_share) }}</span></div>
-        <div class="flex justify-between"><span class="text-slate-500">Prix affiché</span><span>{{ $money($item->asking_price) }}@if ($item->expected_margin !== null) <span class="text-slate-400">(marge visée {{ $money($item->expected_margin) }})</span>@endif</span></div>
+        <div class="flex justify-between"><span class="text-slate-500">Prix affiché</span><span>{{ $money($item->asking_price) }}@if ($item->expected_margin !== null) <span class="text-slate-400">({{ $item->status->hasZeroResaleValue() ? 'perte calculée' : 'marge visée' }} {{ $money($item->expected_margin) }})</span>@endif</span></div>
         <div class="flex justify-between"><span class="text-slate-500">Prix plancher</span><span>{{ $money($item->bottom_price) }}</span></div>
         <div class="flex justify-between"><span class="text-slate-500">Mise en vente</span><span>{{ $item->listing_date?->format('d/m/Y') ?? '—' }}</span></div>
         <div class="flex justify-between"><span class="text-slate-500">Vendu le</span><span>{{ $item->sale_date?->format('d/m/Y') ?? '—' }}</span></div>
-        <div class="flex justify-between"><span class="text-slate-500">Prix final</span><span>{{ $money($item->final_sale_price) }}</span></div>
-        <div class="flex justify-between font-semibold pt-1 border-t"><span>Marge brute</span>
+        <div class="flex justify-between">
+            <span>{{ $item->status->hasZeroResaleValue() ? 'Valeur retenue' : ($item->status === \App\Enums\ItemStatus::Sold ? 'Prix final' : 'Prix cible') }}</span>
+            <span>{{ $money($item->sale_value) }}</span>
+        </div>
+        <div class="flex justify-between font-semibold pt-1 border-t"><span>{{ $item->status->hasZeroResaleValue() ? 'Perte calculée' : 'Marge brute' }}</span>
             @if ($item->margin !== null)
                 <span class="{{ $item->margin >= 0 ? 'text-emerald-600' : 'text-red-600' }}">{{ $money($item->margin) }} ({{ $item->margin_percent ?? '—' }} %)</span>
             @else <span>—</span> @endif

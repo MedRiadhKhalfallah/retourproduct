@@ -115,12 +115,22 @@ class Item extends Model
         });
     }
 
-    /** Marge brute = prix de vente réel - prix d'achat unitaire (null tant que non vendu). */
+    /** Valeur retenue dans les calculs, nulle pour les articles jetés ou incomplets. */
+    protected function saleValue(): Attribute
+    {
+        return Attribute::get(fn () => $this->status->hasZeroResaleValue()
+            ? 0.0
+            : ($this->status === ItemStatus::Sold ? $this->final_sale_price : $this->asking_price));
+    }
+
+    /** Marge brute ou perte calculée à partir de la valeur retenue. */
     protected function margin(): Attribute
     {
-        return Attribute::get(fn () => $this->final_sale_price === null
-            ? null
-            : round((float) $this->final_sale_price - (float) $this->purchase_cost_share, 2));
+        return Attribute::get(fn () => $this->status->hasZeroResaleValue()
+            ? round(0 - (float) $this->purchase_cost_share, 2)
+            : ($this->final_sale_price === null
+                ? null
+                : round((float) $this->final_sale_price - (float) $this->purchase_cost_share, 2)));
     }
 
     /** Marge en % du prix d'achat unitaire. */
@@ -131,12 +141,14 @@ class Item extends Model
             : round($this->margin / (float) $this->purchase_cost_share * 100, 1));
     }
 
-    /** Marge potentielle sur le prix affiché. */
+    /** Marge visée ou perte calculée lorsque la valeur de revente est nulle. */
     protected function expectedMargin(): Attribute
     {
-        return Attribute::get(fn () => $this->asking_price === null
-            ? null
-            : round((float) $this->asking_price - (float) $this->purchase_cost_share, 2));
+        return Attribute::get(fn () => $this->status->hasZeroResaleValue()
+            ? round(0 - (float) $this->purchase_cost_share, 2)
+            : ($this->asking_price === null
+                ? null
+                : round((float) $this->asking_price - (float) $this->purchase_cost_share, 2)));
     }
 
     /** Applique une transition de workflow si autorisée. */

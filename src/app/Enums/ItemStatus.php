@@ -12,6 +12,11 @@ enum ItemStatus: string
     case Incomplete = 'incomplet_pieces';
     case Discarded = 'jete';
 
+    public function hasZeroResaleValue(): bool
+    {
+        return $this === self::Incomplete || $this === self::Discarded;
+    }
+
     public function label(): string
     {
         return match ($this) {

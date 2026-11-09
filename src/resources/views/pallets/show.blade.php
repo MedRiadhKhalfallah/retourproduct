@@ -61,7 +61,7 @@
 <section class="mb-6">
     <div class="mb-3">
         <h2 class="text-lg font-semibold">Rapport financier par palette</h2>
-        <p class="text-sm text-slate-500">Le coût unitaire reprend la répartition au prorata du MSRP enregistrée pour chaque article. Le gain des articles non vendus est estimé au prix affiché.</p>
+        <p class="text-sm text-slate-500">Le coût unitaire reprend la répartition au prorata du MSRP enregistrée pour chaque article. Le gain des articles non vendus est estimé au prix affiché, sauf pour les articles jetés ou incomplets, comptabilisés à 0 €.</p>
     </div>
 
     {{-- Cards mobile --}}
@@ -80,12 +80,12 @@
                 <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
                     <div><dt class="text-xs text-slate-500">Achat estimé</dt><dd class="font-medium">{{ $money($row['purchase_price']) }}</dd></div>
                     <div>
-                        <dt class="text-xs text-slate-500">{{ $row['sale_is_estimate'] ? 'Prix cible' : 'Vente finale' }}</dt>
+                        <dt class="text-xs text-slate-500">{{ $row['sale_label'] }}</dt>
                         <dd class="font-medium">{{ $money($row['sale_price']) }}</dd>
                     </div>
                 </dl>
                 <div class="mt-3 border-t border-slate-100 pt-3">
-                    <span class="text-xs text-slate-500">{{ $row['sale_is_estimate'] ? 'Gain estimé / perte estimée' : 'Gain / perte' }}</span>
+                    <span class="text-xs text-slate-500">{{ $row['profit_label'] }}</span>
                     @if ($profit !== null)
                         <div class="font-semibold {{ $profit >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
                             {{ $profit >= 0 ? '+' : '' }}{{ $money($profit) }}
@@ -109,7 +109,7 @@
                     <th class="p-3">Statut</th>
                     <th class="p-3">Attribué à</th>
                     <th class="p-3 text-right">Achat estimé</th>
-                    <th class="p-3 text-right">Vente finale / cible</th>
+                    <th class="p-3 text-right">Valeur retenue</th>
                     <th class="p-3 text-right">Gain / perte</th>
                 </tr>
             </thead>

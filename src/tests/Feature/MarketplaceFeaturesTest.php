@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ItemStatus;
 use App\Models\Item;
 use App\Models\Pallet;
 use App\Models\User;
@@ -169,6 +170,70 @@ class MarketplaceFeaturesTest extends TestCase
             ->assertSee('text-rose-600')
             ->assertSee('Bilan global de la palette')
             ->assertSee('Perte');
+    }
+
+    #[DataProvider('zeroResaleValueStatuses')]
+    public function test_discarded_or_incomplete_items_are_valued_at_zero_and_report_losses(ItemStatus $status): void
+    {
+        $pallet = $this->pallet();
+        $item = $pallet->items()->create([
+            'name' => 'Article à valeur nulle',
+            'condition' => 'used',
+            'status' => $status->value,
+            'estimated_msrp' => 100,
+            'asking_price' => 75,
+            'final_sale_price' => 25,
+        ]);
+        $pallet->allocateCosts();
+        $item = $item->fresh();
+        $pallet->load('items');
+
+        $report = $pallet->financialReport();
+        $row = $report['items']->firstWhere('item.id', $item->id);
+
+        $this->assertSame(0.0, $item->sale_value);
+        $this->assertSame(-100.0, $item->margin);
+        $this->assertSame(-100.0, $item->expected_margin);
+        $this->assertSame(0.0, $report['revenue_total']);
+        $this->assertSame(-100.0, $report['net_profit']);
+        $this->assertSame(0.0, $row['sale_price']);
+        $this->assertSame(-100.0, $row['profit']);
+        $this->assertFalse($row['sale_is_estimate']);
+        $this->assertSame('Valeur retenue', $row['sale_label']);
+        $this->assertSame('Perte calculée', $row['profit_label']);
+
+        $this->get(route('pallets.show', $pallet))
+            ->assertOk()
+            ->assertSee('Valeur retenue')
+            ->assertSee('Perte calculée')
+            ->assertSee('Perte -100,00 €');
+    }
+
+    public static function zeroResaleValueStatuses(): array
+    {
+        return [
+            'discarded' => [ItemStatus::Discarded],
+            'incomplete pieces' => [ItemStatus::Incomplete],
+        ];
+    }
+
+    #[DataProvider('zeroResaleValueStatuses')]
+    public function test_item_details_show_zero_resale_value_as_a_loss(ItemStatus $status): void
+    {
+        $item = $this->pallet()->items()->create([
+            'name' => 'Article à valeur nulle',
+            'condition' => 'used',
+            'status' => $status->value,
+            'purchase_cost_share' => 50,
+            'asking_price' => 75,
+        ]);
+
+        $this->get(route('items.show', ['item' => $item, 'mode' => 'lecture']))
+            ->assertOk()
+            ->assertSee('Valeur retenue')
+            ->assertSee('0,00 €')
+            ->assertSee('Perte calculée')
+            ->assertSee('-50,00 €');
     }
 
     public function test_stock_filters_by_assignee_and_pages_show_breadcrumbs(): void
