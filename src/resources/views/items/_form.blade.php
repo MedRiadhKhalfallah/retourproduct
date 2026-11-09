@@ -12,9 +12,13 @@
             <div class="md:col-span-2">
                 <label class="{{ $label }}">Photo principale</label>
                 @if ($item->image_url)
-                    <img id="photo-preview" src="{{ $item->image_url }}" alt="" class="mt-2 h-40 rounded-xl object-cover">
+                    <img id="photo-preview" src="{{ $item->image_url }}" alt="{{ $item->name }}" class="mt-2 h-40 rounded-xl object-cover">
+                    <p id="photo-placeholder" class="hidden"></p>
                 @else
-                    <img id="photo-preview" src="" alt="" class="mt-2 h-40 rounded-xl object-cover hidden">
+                    <p id="photo-placeholder" class="mt-2 flex h-40 items-center justify-center rounded-xl bg-slate-100 px-4 text-center text-sm text-slate-500">
+                        {{ $item->image_path ? 'Photo enregistrée introuvable. Téléversez-la à nouveau.' : 'Aucune photo sélectionnée.' }}
+                    </p>
+                    <img id="photo-preview" src="" alt="{{ $item->name }}" class="mt-2 h-40 rounded-xl object-cover hidden">
                 @endif
                 <label class="mt-2 flex w-full md:w-auto md:inline-flex items-center justify-center gap-2 cursor-pointer rounded-xl bg-slate-900 text-white px-4 py-4 md:py-2 text-base md:text-sm active:bg-slate-700">
                     📷 Prendre / choisir une photo
@@ -77,7 +81,11 @@
 <script>
     document.getElementById('photo-input').addEventListener('change', e => {
         const f = e.target.files[0], img = document.getElementById('photo-preview');
-        if (f) { img.src = URL.createObjectURL(f); img.classList.remove('hidden'); }
+        if (f) {
+            img.src = URL.createObjectURL(f);
+            img.classList.remove('hidden');
+            document.getElementById('photo-placeholder').classList.add('hidden');
+        }
     });
 </script>
 @endpush

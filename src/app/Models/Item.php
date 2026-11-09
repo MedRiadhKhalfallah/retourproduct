@@ -80,9 +80,13 @@ class Item extends Model
 
     protected function imageUrl(): Attribute
     {
-        return Attribute::get(fn () => $this->image_path
-            ? Storage::disk(self::IMAGE_DISK)->url($this->image_path)
-            : null);
+        return Attribute::get(function (): ?string {
+            if (! $this->image_path || ! Storage::disk(self::IMAGE_DISK)->exists($this->image_path)) {
+                return null;
+            }
+
+            return '/storage/'.$this->image_path;
+        });
     }
 
     /** URL vide => null ; ajoute https:// si le schéma est absent. */

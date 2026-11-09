@@ -95,6 +95,26 @@ class MarketplaceFeaturesTest extends TestCase
         $this->get('/')->assertOk();
     }
 
+    public function test_item_photo_preview_handles_missing_files_and_uses_a_relative_url(): void
+    {
+        Storage::fake('public');
+        $item = $this->pallet()->items()->create([
+            'name' => 'Photo en attente',
+            'image_path' => 'items/preview.jpg',
+        ]);
+
+        $this->get(route('items.show', $item))
+            ->assertOk()
+            ->assertSee('Photo enregistrée introuvable. Téléversez-la à nouveau.');
+
+        Storage::disk('public')->put('items/preview.jpg', 'image');
+
+        $this->get(route('items.show', $item))
+            ->assertOk()
+            ->assertSee('src="/storage/items/preview.jpg"', false)
+            ->assertDontSee('Photo enregistrée introuvable.');
+    }
+
     public function test_pallet_financial_report_uses_allocated_costs_actual_revenue_and_unsold_targets(): void
     {
         $pallet = $this->pallet();
