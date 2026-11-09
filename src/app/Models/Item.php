@@ -41,11 +41,7 @@ class Item extends Model
 
     protected static function booted(): void
     {
-        static::deleting(function (Item $item) {
-            if ($item->image_path) {
-                Storage::disk(self::IMAGE_DISK)->delete($item->image_path);
-            }
-        });
+        static::deleting(fn (Item $item) => $item->deleteStoredImage($item->image_path));
     }
 
     public function pallet(): BelongsTo
@@ -68,20 +64,56 @@ class Item extends Model
         return $this->hasMany(ItemHistory::class)->latest()->orderByDesc('id');
     }
 
-    /** Stocke la photo principale (remplace l'ancienne) et renvoie le chemin. */
+    public function storedImage(): HasOne
+    {
+        return $this->hasOne(StoredFile::class, 'path', 'image_path');
+    }
+
+    /** Stocke la photo principale en base et renvoie son chemin logique. */
     public function storeImage(UploadedFile $file): string
     {
-        if ($this->image_path) {
-            Storage::disk(self::IMAGE_DISK)->delete($this->image_path);
+        $path = StoredFile::PATH_PREFIX.'items/'.$file->hashName();
+
+        StoredFile::create([
+            'path' => $path,
+            'mime_type' => $file->getMimeType(),
+            'content_base64' => base64_encode($file->getContent()),
+        ]);
+
+        return $path;
+    }
+
+    public function deleteStoredImage(?string $path): void
+    {
+        if (! $path) {
+            return;
         }
 
-        return $file->store('items', self::IMAGE_DISK);
+        if (str_starts_with($path, StoredFile::PATH_PREFIX)) {
+            StoredFile::query()->where('path', $path)->delete();
+
+            return;
+        }
+
+        Storage::disk(self::IMAGE_DISK)->delete($path);
     }
 
     protected function imageUrl(): Attribute
     {
         return Attribute::get(function (): ?string {
-            if (! $this->image_path || ! Storage::disk(self::IMAGE_DISK)->exists($this->image_path)) {
+            if (! $this->image_path) {
+                return null;
+            }
+
+            if (str_starts_with($this->image_path, StoredFile::PATH_PREFIX)) {
+                $storedImageExists = $this->relationLoaded('storedImage')
+                    ? $this->getRelation('storedImage') !== null
+                    : $this->storedImage()->exists();
+
+                return $storedImageExists ? route('items.image', $this, false) : null;
+            }
+
+            if (! Storage::disk(self::IMAGE_DISK)->exists($this->image_path)) {
                 return null;
             }
 

@@ -6,12 +6,15 @@ use App\Enums\ItemStatus;
 use App\Http\Requests\ItemRequest;
 use App\Models\Item;
 use App\Models\Pallet;
+use App\Models\StoredFile;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ItemController extends Controller
 {
@@ -27,7 +30,7 @@ class ItemController extends Controller
         $status = $filters['status'] ?? null;
         $assignedTo = $filters['assigned_to'] ?? null;
 
-        $items = Item::with('pallet', 'assignedUser')
+        $items = Item::with('pallet', 'assignedUser', 'storedImage:id,path')
             ->when($search !== '', function (Builder $query) use ($search): void {
                 $query->where(function (Builder $query) use ($search): void {
                     $term = '%'.$search.'%';
@@ -69,10 +72,15 @@ class ItemController extends Controller
 
     public function store(ItemRequest $request, Pallet $pallet)
     {
-        $item = $pallet->items()->create($this->payload($request));
-        if ($request->hasFile('image')) {
-            $item->update(['image_path' => $item->storeImage($request->file('image'))]);
-        }
+        $item = DB::transaction(function () use ($request, $pallet): Item {
+            $item = $pallet->items()->create($this->payload($request));
+
+            if ($request->hasFile('image')) {
+                $item->update(['image_path' => $item->storeImage($request->file('image'))]);
+            }
+
+            return $item;
+        });
         $pallet->allocateCosts();
 
         return redirect()->route('items.show', $item)->with('ok', 'Article ajouté.');
@@ -81,10 +89,28 @@ class ItemController extends Controller
     public function show(Request $request, Item $item)
     {
         return view('items.show', [
-            'item' => $item->load('pallet', 'checklist', 'histories.user', 'assignedUser'),
+            'item' => $item->load('pallet', 'checklist', 'histories.user', 'assignedUser', 'storedImage:id,path'),
             'assignees' => $this->assignmentUsers(),
             'readOnly' => $request->query('mode') === 'lecture',
         ]);
+    }
+
+    public function image(Item $item): StreamedResponse
+    {
+        abort_unless(str_starts_with((string) $item->image_path, StoredFile::PATH_PREFIX), 404);
+
+        $storedFile = $item->storedImage()->firstOrFail();
+        $content = base64_decode($storedFile->content_base64, true);
+        abort_if($content === false, 500);
+
+        return response()->streamDownload(
+            static function () use ($content): void {
+                echo $content;
+            },
+            basename($storedFile->path),
+            ['Content-Type' => $storedFile->mime_type ?: 'application/octet-stream'],
+            'inline',
+        );
     }
 
     public function edit(Item $item)
@@ -102,11 +128,22 @@ class ItemController extends Controller
 
     public function update(ItemRequest $request, Item $item)
     {
-        $data = $this->payload($request);
+        $previousImagePath = $item->image_path;
+
+        DB::transaction(function () use ($request, $item): void {
+            $data = $this->payload($request);
+
+            if ($request->hasFile('image')) {
+                $data['image_path'] = $item->storeImage($request->file('image'));
+            }
+
+            $item->update($data);
+        });
+
         if ($request->hasFile('image')) {
-            $data['image_path'] = $item->storeImage($request->file('image'));
+            $item->deleteStoredImage($previousImagePath);
         }
-        $item->update($data);
+
         $item->pallet->allocateCosts();
 
         return redirect()->route('items.show', $item)->with('ok', 'Article mis à jour.');

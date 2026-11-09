@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\ItemStatus;
 use App\Models\Item;
 use App\Models\Pallet;
+use App\Models\StoredFile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -39,18 +40,27 @@ class MarketplaceFeaturesTest extends TestCase
     {
         Storage::fake('local');
         $pallet = $this->pallet();
+        $pdf = UploadedFile::fake()->create('facture.pdf', 50, 'application/pdf');
+        $pdfContents = $pdf->getContent();
 
         $this->post(route('pallets.attachments.store', $pallet), [
-            'attachments' => [UploadedFile::fake()->create('facture.pdf', 50, 'application/pdf'), self::png('recu.png')],
+            'attachments' => [$pdf, self::png('recu.png')],
         ])->assertSessionHasNoErrors();
 
-        $a = $pallet->attachments()->first();
+        $a = $pallet->attachments()->firstOrFail();
         $this->assertCount(2, $pallet->attachments);
-        Storage::disk('local')->assertExists($a->path);
-        $this->assertStringStartsWith("pallets/{$pallet->id}/", $a->path);
+        $this->assertSame(StoredFile::DATABASE_DISK, $a->disk);
+        $this->assertStringStartsWith(StoredFile::PATH_PREFIX."pallets/{$pallet->id}/", $a->path);
+        $storedFile = StoredFile::query()->where('path', $a->path)->firstOrFail();
+        $this->assertSame(base64_encode($pdfContents), $storedFile->content_base64);
 
-        $this->get(route('pallets.attachments.show', [$pallet, $a]))->assertOk();
-        $this->get(route('pallets.attachments.download', [$pallet, $a]))->assertOk()->assertDownload('facture.pdf');
+        $this->get(route('pallets.attachments.show', [$pallet, $a]))
+            ->assertOk()
+            ->assertStreamedContent($pdfContents);
+        $this->get(route('pallets.attachments.download', [$pallet, $a]))
+            ->assertOk()
+            ->assertDownload('facture.pdf')
+            ->assertStreamedContent($pdfContents);
         $this->get(route('pallets.show', $pallet))->assertOk()->assertSee('facture.pdf');
 
         $other = Pallet::create(['reference' => 'P-2', 'supplier_name' => 'Y', 'total_cost' => 1, 'purchase_date' => now()]);
@@ -60,26 +70,49 @@ class MarketplaceFeaturesTest extends TestCase
             'attachments' => [UploadedFile::fake()->create('virus.exe', 5)],
         ])->assertSessionHasErrors('attachments.0');
 
-        $this->delete(route('pallets.attachments.destroy', [$pallet, $a]));
-        Storage::disk('local')->assertMissing($a->path);
+        $this->delete(route('pallets.attachments.destroy', [$pallet, $a]))->assertRedirect();
+        $this->assertModelMissing($storedFile);
+
+        $legacyPath = "pallets/{$pallet->id}/legacy.pdf";
+        $legacyContents = '%PDF legacy';
+        Storage::disk('local')->put($legacyPath, $legacyContents);
+        $legacyAttachment = $pallet->attachments()->create([
+            'disk' => 'local',
+            'path' => $legacyPath,
+            'original_name' => 'legacy.pdf',
+            'mime_type' => 'application/pdf',
+            'size' => strlen($legacyContents),
+        ]);
+
+        $this->get(route('pallets.attachments.show', [$pallet, $legacyAttachment]))
+            ->assertOk()
+            ->assertStreamedContent($legacyContents);
+        $this->delete(route('pallets.attachments.destroy', [$pallet, $legacyAttachment]))->assertRedirect();
+        Storage::disk('local')->assertMissing($legacyPath);
     }
 
     public function test_item_create_with_photo_and_sale_rules(): void
     {
-        Storage::fake('public');
         $pallet = $this->pallet();
+        $photo = self::png('p.png');
+        $photoContents = $photo->getContent();
 
         $this->post(route('pallets.items.store', $pallet), [
             'name' => 'Lampe', 'condition' => 'used', 'status' => 'pret_a_vendre',
             'asking_price' => 50, 'bottom_price' => 30, 'marketplace_url' => 'kijiji.ca/abc',
             'inspection_notes' => 'Testée OK', 'issues_description' => 'Rayure',
-            'image' => self::png('p.png'),
+            'image' => $photo,
         ])->assertSessionHasNoErrors();
 
-        $item = Item::first();
+        $item = Item::query()->firstOrFail();
         $this->assertSame('https://kijiji.ca/abc', $item->marketplace_url);
-        Storage::disk('public')->assertExists($item->image_path);
+        $this->assertStringStartsWith(StoredFile::PATH_PREFIX.'items/', $item->image_path);
+        $this->assertDatabaseHas('stored_files', [
+            'path' => $item->image_path,
+            'content_base64' => base64_encode($photoContents),
+        ]);
         $this->assertStringContainsString('Rayure', $item->listing_description);
+        $this->get(route('items.image', $item))->assertOk()->assertStreamedContent($photoContents);
 
         $this->put(route('items.update', $item), ['name' => 'Lampe', 'condition' => 'used', 'status' => 'vendu'])
             ->assertSessionHasErrors('final_sale_price');
@@ -91,15 +124,79 @@ class MarketplaceFeaturesTest extends TestCase
         $this->put(route('items.update', $item), ['name' => 'Lampe', 'condition' => 'used', 'asking_price' => 10, 'bottom_price' => 20, 'status' => 'pret_a_vendre'])
             ->assertSessionHasErrors('bottom_price');
 
-        $this->get(route('items.show', ['item' => $item, 'mode' => 'lecture']))->assertOk()->assertSee('Copier')->assertSee('Lampe');
+        $this->get(route('items.show', ['item' => $item, 'mode' => 'lecture']))
+            ->assertOk()
+            ->assertSee('Copier')
+            ->assertSee('Lampe')
+            ->assertSee('src="'.route('items.image', $item, false).'"', false);
         $this->get(route('items.index'))->assertOk();
         $this->get('/')->assertOk();
+    }
+
+    public function test_replacing_or_deleting_an_item_removes_its_database_photo(): void
+    {
+        $pallet = $this->pallet();
+
+        $this->post(route('pallets.items.store', $pallet), [
+            'name' => 'Photo initiale',
+            'condition' => 'used',
+            'image' => self::png('initial.png'),
+        ])->assertSessionHasNoErrors();
+
+        $item = Item::query()->firstOrFail();
+        $oldStoredFile = StoredFile::query()->where('path', $item->image_path)->firstOrFail();
+
+        $this->put(route('items.update', $item), [
+            'name' => 'Photo remplacée',
+            'condition' => 'used',
+            'image' => self::png('remplacement.png'),
+        ])->assertSessionHasNoErrors();
+
+        $item->refresh();
+        $newStoredFile = StoredFile::query()->where('path', $item->image_path)->firstOrFail();
+        $this->assertNotSame($oldStoredFile->path, $newStoredFile->path);
+        $this->assertModelMissing($oldStoredFile);
+
+        $this->delete(route('items.destroy', $item))
+            ->assertRedirect(route('pallets.show', $pallet));
+        $this->assertModelMissing($newStoredFile);
+    }
+
+    public function test_deleting_a_pallet_removes_database_backed_item_photos(): void
+    {
+        $pallet = $this->pallet();
+
+        $this->post(route('pallets.items.store', $pallet), [
+            'name' => 'Photo de palette',
+            'condition' => 'used',
+            'image' => self::png('palette.png'),
+        ])->assertSessionHasNoErrors();
+
+        $storedFile = StoredFile::query()->firstOrFail();
+
+        $this->delete(route('pallets.destroy', $pallet))
+            ->assertRedirect(route('pallets.index'));
+        $this->assertModelMissing($storedFile);
+    }
+
+    public function test_item_image_endpoint_redirects_guests_to_login(): void
+    {
+        $storedFile = StoredFile::factory()->create(['mime_type' => 'image/png']);
+        $item = $this->pallet()->items()->create([
+            'name' => 'Photo privée',
+            'image_path' => $storedFile->path,
+        ]);
+
+        $this->actingAsGuest()
+            ->get(route('items.image', $item))
+            ->assertRedirect(route('login'));
     }
 
     public function test_item_photo_preview_handles_missing_files_and_uses_a_relative_url(): void
     {
         Storage::fake('public');
-        $item = $this->pallet()->items()->create([
+        $pallet = $this->pallet();
+        $item = $pallet->items()->create([
             'name' => 'Photo en attente',
             'image_path' => 'items/preview.jpg',
         ]);
@@ -114,6 +211,16 @@ class MarketplaceFeaturesTest extends TestCase
             ->assertOk()
             ->assertSee('src="/storage/items/preview.jpg"', false)
             ->assertDontSee('Photo enregistrée introuvable.');
+
+        $missingDatabasePhoto = $pallet->items()->create([
+            'name' => 'Photo base absente',
+            'image_path' => StoredFile::PATH_PREFIX.'items/missing.png',
+        ]);
+
+        $this->get(route('items.show', $missingDatabasePhoto))
+            ->assertOk()
+            ->assertSee('Photo enregistrée introuvable. Téléversez-la à nouveau.');
+        $this->get(route('items.image', $missingDatabasePhoto))->assertNotFound();
     }
 
     public function test_pallet_financial_report_uses_allocated_costs_actual_revenue_and_unsold_targets(): void

@@ -12,7 +12,15 @@ class PalletAttachment extends Model
 
     protected static function booted(): void
     {
-        static::deleting(fn (self $a) => Storage::disk($a->disk)->delete($a->path));
+        static::deleting(function (self $attachment): void {
+            if ($attachment->disk === StoredFile::DATABASE_DISK) {
+                StoredFile::query()->where('path', $attachment->path)->delete();
+
+                return;
+            }
+
+            Storage::disk($attachment->disk)->delete($attachment->path);
+        });
     }
 
     public function pallet(): BelongsTo

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class Pallet extends Model
@@ -23,6 +24,10 @@ class Pallet extends Model
     protected static function booted(): void
     {
         static::deleting(function (Pallet $pallet) {
+            $pallet->items()
+                ->select(['id', 'image_path'])
+                ->get()
+                ->each(fn (Item $item) => $item->deleteStoredImage($item->image_path));
             $pallet->attachments->each->delete();
             Storage::disk(self::ATTACHMENT_DISK)->deleteDirectory("pallets/{$pallet->id}");
         });
@@ -82,17 +87,29 @@ class Pallet extends Model
         return $this->hasMany(PalletAttachment::class);
     }
 
-    /** Enregistre des fichiers (PDF/PNG/JPG) dans storage/app/private/pallets/{id}/. */
+    /** Enregistre les pièces jointes en base de données. */
     public function addAttachments(array $files): void
     {
         foreach ($files as $file) {
-            $this->attachments()->create([
-                'disk' => self::ATTACHMENT_DISK,
-                'path' => $file->store("pallets/{$this->id}", self::ATTACHMENT_DISK),
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getMimeType(),
-                'size' => $file->getSize(),
-            ]);
+            $path = StoredFile::PATH_PREFIX."pallets/{$this->id}/".$file->hashName();
+            $mimeType = $file->getMimeType();
+            $contentBase64 = base64_encode($file->getContent());
+
+            DB::transaction(function () use ($file, $path, $mimeType, $contentBase64): void {
+                StoredFile::create([
+                    'path' => $path,
+                    'mime_type' => $mimeType,
+                    'content_base64' => $contentBase64,
+                ]);
+
+                $this->attachments()->create([
+                    'disk' => StoredFile::DATABASE_DISK,
+                    'path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $mimeType,
+                    'size' => $file->getSize(),
+                ]);
+            });
         }
     }
 

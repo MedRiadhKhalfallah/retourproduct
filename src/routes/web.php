@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('pallets', PalletController::class);
     Route::resource('pallets.items', ItemController::class)->shallow()->except(['index']);
+    Route::get('items/{item}/image', [ItemController::class, 'image'])->name('items.image');
 
     Route::prefix('pallets/{pallet}/attachments')->name('pallets.attachments.')->scopeBindings()->group(function () {
         Route::post('/', [PalletAttachmentController::class, 'store'])->name('store');
