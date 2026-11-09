@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/', DashboardController::class)->name('dashboard');
 
+    Route::get('items/export', [ItemController::class, 'export'])->name('items.export');
     Route::resource('pallets', PalletController::class);
     Route::resource('pallets.items', ItemController::class)->shallow()->except(['index']);
     Route::get('items/{item}/image', [ItemController::class, 'image'])->name('items.image');

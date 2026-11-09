@@ -192,6 +192,52 @@ class MarketplaceFeaturesTest extends TestCase
             ->assertRedirect(route('login'));
     }
 
+    public function test_article_export_downloads_all_article_data_as_json_without_photo_contents(): void
+    {
+        $pallet = $this->pallet();
+        $photoContent = 'photo data excluded from the text backup';
+        $storedFile = StoredFile::factory()->create([
+            'content_base64' => base64_encode($photoContent),
+        ]);
+        $firstItem = $pallet->items()->create([
+            'name' => 'Article exporté',
+            'original_sku' => 'SKU-EXPORT',
+            'image_path' => $storedFile->path,
+        ]);
+        $secondItem = $pallet->items()->create(['name' => 'Second article']);
+
+        $this->get(route('items.index'))
+            ->assertOk()
+            ->assertSee('Exporter tous les articles (.txt)')
+            ->assertSee(route('items.export'), false);
+
+        $response = $this->get(route('items.export', ['search' => 'aucun résultat']));
+
+        $response->assertOk()
+            ->assertDownload()
+            ->assertHeaderContains('Content-Disposition', 'articles-backup-')
+            ->assertHeaderContains('Content-Disposition', '.txt');
+
+        $content = $response->streamedContent();
+        $backup = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        $exportedItems = $backup['items'];
+
+        $this->assertFalse($backup['photos_included']);
+        $this->assertCount(2, $exportedItems);
+        $this->assertSame([$firstItem->id, $secondItem->id], array_column($exportedItems, 'id'));
+        $this->assertSame('Article exporté', $exportedItems[0]['name']);
+        $this->assertSame($storedFile->path, $exportedItems[0]['image_path']);
+        $this->assertArrayNotHasKey('content_base64', $exportedItems[0]);
+        $this->assertStringNotContainsString(base64_encode($photoContent), $content);
+    }
+
+    public function test_article_export_redirects_guests_to_login(): void
+    {
+        $this->actingAsGuest()
+            ->get(route('items.export'))
+            ->assertRedirect(route('login'));
+    }
+
     public function test_item_photo_preview_handles_missing_files_and_uses_a_relative_url(): void
     {
         Storage::fake('public');

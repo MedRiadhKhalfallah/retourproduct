@@ -61,6 +61,24 @@ class ItemController extends Controller
         return view('items.index', compact('items', 'assignees', 'search'));
     }
 
+    public function export(): StreamedResponse
+    {
+        $exportedAt = now();
+        $json = json_encode([
+            'exported_at' => $exportedAt->toIso8601String(),
+            'photos_included' => false,
+            'items' => Item::query()->orderBy('id')->get()->toArray(),
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+        return response()->streamDownload(
+            static function () use ($json): void {
+                echo $json;
+            },
+            'articles-backup-'.$exportedAt->format('Y-m-d_H-i-s').'.txt',
+            ['Content-Type' => 'text/plain; charset=UTF-8'],
+        );
+    }
+
     public function create(Pallet $pallet)
     {
         return view('items.create', [

@@ -12,9 +12,14 @@
         <h1 class="text-xl font-bold md:text-2xl">Stock / Articles</h1>
         <p class="mt-1 text-sm text-slate-500">Retrouvez rapidement une fiche par nom, identifiant ou SKU.</p>
     </div>
-    <p class="text-sm text-slate-500" aria-live="polite">
-        {{ $items->total() }} {{ $items->total() > 1 ? 'articles' : 'article' }}
-    </p>
+    <div class="flex flex-wrap items-center gap-2">
+        <p class="text-sm text-slate-500" aria-live="polite">
+            {{ $items->total() }} {{ $items->total() > 1 ? 'articles' : 'article' }}
+        </p>
+        <a href="{{ route('items.export') }}" class="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm text-white hover:bg-slate-700 sm:py-2">
+            Exporter tous les articles (.txt)
+        </a>
+    </div>
 </div>
 <form method="GET" action="{{ route('items.index') }}" role="search" aria-label="Rechercher et filtrer les articles" class="mb-4 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center">
     @if ($current)<input type="hidden" name="assigned_to" value="{{ $current }}">@endif
