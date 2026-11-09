@@ -7,26 +7,55 @@ use App\Http\Requests\ItemRequest;
 use App\Models\Item;
 use App\Models\Pallet;
 use App\Models\User;
+use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ItemController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $assignees = User::query()->whereIn('email', User::ITEM_ASSIGNMENT_EMAILS)->orderBy('name')->get(['id', 'name']);
-        $request->validate([
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::enum(ItemStatus::class)],
             'assigned_to' => ['nullable', Rule::in([...$assignees->modelKeys(), 'unassigned'])],
         ]);
+        $search = trim($filters['search'] ?? '');
+        $status = $filters['status'] ?? null;
+        $assignedTo = $filters['assigned_to'] ?? null;
 
         $items = Item::with('pallet', 'assignedUser')
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->when($request->assigned_to, fn ($q, $a) => $a === 'unassigned' ? $q->whereNull('assigned_to') : $q->where('assigned_to', $a))
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $query->where(function (Builder $query) use ($search): void {
+                    $term = '%'.$search.'%';
+
+                    $query->where('name', 'like', $term)
+                        ->orWhere('original_sku', 'like', $term)
+                        ->orWhere('internal_reference', 'like', $term);
+
+                    if (ctype_digit($search)) {
+                        $query->orWhereKey((int) $search);
+                    }
+                });
+            })
+            ->when($status, function (Builder $query) use ($status): void {
+                $query->where('status', $status);
+            })
+            ->when($assignedTo, function (Builder $query) use ($assignedTo): void {
+                if ($assignedTo === 'unassigned') {
+                    $query->whereNull('assigned_to');
+
+                    return;
+                }
+
+                $query->where('assigned_to', $assignedTo);
+            })
             ->latest()->paginate(20)->withQueryString();
 
-        return view('items.index', compact('items', 'assignees'));
+        return view('items.index', compact('items', 'assignees', 'search'));
     }
 
     public function create(Pallet $pallet)

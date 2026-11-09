@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class MarketplaceFeaturesTest extends TestCase
@@ -167,5 +168,89 @@ class MarketplaceFeaturesTest extends TestCase
         $this->get(route('items.show', $pallet->items()->first()))
             ->assertSee('aria-current="page"', false)
             ->assertSee(route('pallets.show', $pallet), false);
+    }
+
+    #[DataProvider('itemSearchFields')]
+    public function test_stock_search_finds_items_by_name_sku_reference_or_id(string $field): void
+    {
+        $pallet = $this->pallet();
+        $item = $pallet->items()->create([
+            'name' => 'Lampe à poser unique',
+            'original_sku' => 'SKU-LAMPE-UNIQUE',
+            'internal_reference' => 'REF-LAMPE-UNIQUE',
+        ]);
+        $pallet->items()->create([
+            'name' => 'Fauteuil sans correspondance',
+            'original_sku' => 'SKU-FAUTEUIL',
+            'internal_reference' => 'REF-FAUTEUIL',
+        ]);
+
+        $search = match ($field) {
+            'name' => $item->name,
+            'sku' => $item->original_sku,
+            'reference' => $item->internal_reference,
+            'id' => (string) $item->id,
+        };
+
+        $this->get(route('items.index', ['search' => $search]))
+            ->assertOk()
+            ->assertSee('Lampe à poser unique')
+            ->assertDontSee('Fauteuil sans correspondance')
+            ->assertSee('1 article');
+    }
+
+    public static function itemSearchFields(): array
+    {
+        return [
+            'name' => ['name'],
+            'SKU' => ['sku'],
+            'internal reference' => ['reference'],
+            'database ID' => ['id'],
+        ];
+    }
+
+    public function test_stock_cards_escape_article_names_and_references(): void
+    {
+        $pallet = $this->pallet();
+        $dangerousContent = "<script>alert('xss')</script>";
+        $pallet->items()->create([
+            'name' => 'Lampe '.$dangerousContent,
+            'original_sku' => $dangerousContent,
+            'internal_reference' => $dangerousContent,
+        ]);
+
+        $this->get(route('items.index'))
+            ->assertOk()
+            ->assertSee('&lt;script&gt;', false)
+            ->assertDontSee('<script>', false);
+    }
+
+    public function test_stock_search_escapes_query_input_and_does_not_inject_a_match(): void
+    {
+        $pallet = $this->pallet();
+        $pallet->items()->create(['name' => 'Article visible sans filtre']);
+        $search = "' OR 1=1 -- <script>alert('xss')</script>";
+
+        $this->get(route('items.index', ['search' => $search]))
+            ->assertOk()
+            ->assertSee('&lt;script&gt;', false)
+            ->assertDontSee('<script>', false)
+            ->assertDontSee('Article visible sans filtre')
+            ->assertSee('Aucun article ne correspond');
+    }
+
+    #[DataProvider('invalidSearchTerms')]
+    public function test_stock_search_rejects_non_string_or_overlong_terms(string|array $search): void
+    {
+        $this->get(route('items.index', ['search' => $search]))
+            ->assertSessionHasErrors('search');
+    }
+
+    public static function invalidSearchTerms(): array
+    {
+        return [
+            'array input' => [['article', 'sku']],
+            'over 255 characters' => [str_repeat('x', 256)],
+        ];
     }
 }
