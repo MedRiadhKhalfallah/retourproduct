@@ -33,6 +33,7 @@ EXPOSE 10000
 CMD sed -i "s/_PORT_PLACEHOLDER_/$PORT/g" /etc/nginx/sites-available/default && \
     php artisan config:cache && \
     php artisan route:cache && \
+    php artisan storage:link --force --no-interaction && \
     php artisan migrate --force && \
     php artisan db:seed --force && \
     service nginx start && \
