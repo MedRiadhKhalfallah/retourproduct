@@ -1,4 +1,4 @@
-FROM php:8.5.12-fpm
+FROM php:8.5.12-fpm AS php
 
 # Installer les dépendances système, Nginx et les extensions pour PostgreSQL (libpq-dev)
 RUN apt-get update && apt-get install -y \
@@ -24,6 +24,24 @@ COPY src/ .
 COPY docker/nginx/default.conf /etc/nginx/sites-available/default
 
 RUN composer install --no-dev --optimize-autoloader
+
+FROM node:24-alpine AS frontend
+
+WORKDIR /var/www/html
+
+COPY src/package.json ./
+RUN npm install --ignore-scripts --no-package-lock
+
+COPY src/vite.config.js ./vite.config.js
+COPY src/resources ./resources
+COPY src/storage/framework/views ./storage/framework/views
+COPY --from=php /var/www/html/vendor/laravel/framework/src/Illuminate/Pagination/resources/views ./vendor/laravel/framework/src/Illuminate/Pagination/resources/views
+
+RUN mkdir -p public && npm run build
+
+FROM php AS production
+
+COPY --from=frontend /var/www/html/public/build ./public/build
 
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 

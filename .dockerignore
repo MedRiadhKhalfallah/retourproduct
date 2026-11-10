@@ -1,0 +1,11 @@
+.git
+.idea
+**/node_modules
+**/vendor
+**/.env
+**/.env.*
+!**/.env.example
+src/.dockerignore
+src/public/build
+src/public/hot
+src/public/storage
