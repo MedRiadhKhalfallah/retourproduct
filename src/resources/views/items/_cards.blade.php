@@ -1,10 +1,10 @@
 @php
     $money = fn ($value) => $value !== null ? number_format($value, 2, ',', ' ').' €' : '—';
 @endphp
-<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
     @forelse ($items as $item)
         <article class="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-slate-400 hover:shadow-md">
-            <a href="{{ route('items.show', $item) }}" aria-label="Ouvrir la fiche de {{ $item->name }}" class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600">
+            <a href="{{ route('items.show', $item) }}" aria-label="Ouvrir la fiche de {{ $item->name }}" class="grid min-w-0 grid-cols-[5.5rem_minmax(0,1fr)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 sm:block">
                 <div class="relative aspect-square bg-slate-100">
                     @if ($item->image_url)
                         <img src="{{ $item->image_url }}" alt="{{ $item->name }}" class="h-full w-full object-contain p-3" loading="lazy">

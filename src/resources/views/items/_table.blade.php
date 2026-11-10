@@ -24,8 +24,8 @@
 </div>
 
 {{-- Desktop : tableau compact --}}
-<div class="hidden md:block bg-white rounded-2xl shadow-sm overflow-hidden">
-    <table class="w-full text-sm">
+<div class="hidden overflow-x-auto overscroll-x-contain rounded-2xl bg-white shadow-sm md:block" role="region" aria-label="Tableau des articles" tabindex="0">
+    <table class="min-w-[56rem] w-full text-sm">
         <thead class="bg-slate-50 text-left text-slate-500">
             <tr>
                 <th class="p-3">Article</th>

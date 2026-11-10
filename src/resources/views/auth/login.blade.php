@@ -4,15 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Connexion — {{ config('app.name') }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @fonts
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-100 text-slate-800 antialiased">
+<body class="min-h-screen bg-slate-100 font-sans text-slate-800 antialiased">
 <main class="min-h-screen flex items-center justify-center px-4 py-10">
     <section class="w-full max-w-md rounded-3xl bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/70">
-        <a href="{{ route('login') }}" class="mb-6 inline-flex items-center gap-2 text-xl font-bold text-slate-900">
-            <span class="grid h-11 w-11 place-items-center rounded-2xl bg-slate-900 text-2xl text-white">📦</span>
-            {{ config('app.name') }}
-        </a>
+        <x-app-logo :href="route('login')" class="mb-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500 focus-visible:ring-offset-2" />
         <h1 class="text-2xl font-bold tracking-tight">Connexion</h1>
         <p class="mt-1 text-sm text-slate-500">Connectez-vous pour accéder à la gestion des stocks.</p>
 

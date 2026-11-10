@@ -16,7 +16,7 @@
         <p class="text-sm text-slate-500" aria-live="polite">
             {{ $items->total() }} {{ $items->total() > 1 ? 'articles' : 'article' }}
         </p>
-        <a href="{{ route('items.export') }}" class="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm text-white hover:bg-slate-700 sm:py-2">
+        <a href="{{ route('items.export') }}" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-center text-sm text-white hover:bg-slate-700 sm:w-auto sm:py-2">
             Exporter tous les articles (.txt)
         </a>
     </div>

@@ -1,10 +1,14 @@
 @extends('layouts.app')
 @section('content')
-<div class="flex justify-between items-center mb-4">
-    <h1 class="text-2xl font-bold">Palettes</h1>
-    <a href="{{ route('pallets.create') }}" class="px-3 py-2 bg-slate-800 text-white rounded">+ Nouvelle palette</a>
+<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <h1 class="text-xl font-bold sm:text-2xl">Palettes</h1>
+    <a href="{{ route('pallets.create') }}" class="w-full rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-slate-700 sm:w-auto sm:py-2">+ Nouvelle palette</a>
 </div>
-<div class="overflow-x-auto rounded-2xl shadow-sm"><table class="w-full bg-white text-sm">
+<p class="mb-3 text-sm leading-relaxed text-slate-500">
+    Le profit reflète les ventes déjà réalisées moins le coût total ; il peut rester négatif tant que la palette contient des articles à vendre.
+</p>
+<div class="overflow-x-auto overscroll-x-contain rounded-2xl shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600" role="region" aria-label="Liste des palettes" tabindex="0">
+    <table class="min-w-[44rem] w-full bg-white text-sm">
     <thead class="bg-gray-50 text-left">
         <tr><th class="p-2">Référence</th><th class="p-2">Fournisseur</th><th class="p-2">Date</th><th class="p-2 text-right">Coût</th><th class="p-2 text-right">Articles</th><th class="p-2 text-right">Profit</th></tr>
     </thead>
@@ -22,6 +26,7 @@
         <tr><td class="p-4 text-gray-500" colspan="6">Aucune palette.</td></tr>
     @endforelse
     </tbody>
-</table></div>
+    </table>
+</div>
 <div class="mt-4">{{ $pallets->links() }}</div>
 @endsection

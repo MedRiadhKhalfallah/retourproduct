@@ -17,11 +17,15 @@
     </div>
 </div>
 
-<div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
-    <div class="bg-white p-4 rounded-2xl shadow-sm"><div class="text-sm text-slate-500">Investi</div><div class="font-semibold">{{ number_format($pallet->total_cost, 2) }} €</div></div>
-    <div class="bg-white p-4 rounded-2xl shadow-sm"><div class="text-sm text-slate-500">Revenu</div><div class="font-semibold">{{ number_format($pallet->revenue, 2) }} €</div></div>
-    <div class="bg-white p-4 rounded-2xl shadow-sm"><div class="text-sm text-slate-500">Profit net</div><div class="font-semibold {{ $pallet->profit >= 0 ? 'text-emerald-600' : 'text-red-600' }}">{{ number_format($pallet->profit, 2) }} €</div></div>
-    <div class="bg-white p-4 rounded-2xl shadow-sm"><div class="text-sm text-slate-500">ROI</div><div class="font-semibold">{{ $pallet->profitability !== null ? $pallet->profitability.' %' : '—' }}</div></div>
+<div class="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+    <div class="rounded-2xl bg-white p-4 shadow-sm"><div class="text-sm text-slate-500">Investi</div><div class="font-semibold">{{ number_format($pallet->total_cost, 2) }} €</div></div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm"><div class="text-sm text-slate-500">Revenu</div><div class="font-semibold">{{ number_format($pallet->revenue, 2) }} €</div></div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm">
+        <div class="text-sm text-slate-500">Profit net</div>
+        <div class="font-semibold {{ $pallet->profit >= 0 ? 'text-emerald-600' : 'text-red-600' }}">{{ number_format($pallet->profit, 2) }} €</div>
+        <p class="mt-1 text-xs leading-relaxed text-slate-500">Basé sur les ventes réalisées ; il peut rester négatif tant qu'il reste des articles à vendre.</p>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm"><div class="text-sm text-slate-500">ROI</div><div class="font-semibold">{{ $pallet->profitability !== null ? $pallet->profitability.' %' : '—' }}</div></div>
 </div>
 
 <section class="bg-white rounded-2xl shadow-sm p-4 md:p-6 mb-6">
@@ -101,8 +105,8 @@
     </div>
 
     {{-- Tableau desktop --}}
-    <div class="hidden overflow-x-auto rounded-2xl bg-white shadow-sm md:block">
-        <table class="w-full text-sm">
+    <div class="hidden overflow-x-auto overscroll-x-contain rounded-2xl bg-white shadow-sm md:block" role="region" aria-label="Rapport financier par palette" tabindex="0">
+        <table class="min-w-[56rem] w-full text-sm">
             <thead class="bg-slate-50 text-left text-slate-500">
                 <tr>
                     <th class="p-3">Produit</th>
