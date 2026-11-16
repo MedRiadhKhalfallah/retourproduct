@@ -53,15 +53,26 @@
 
     <section class="bg-white rounded-2xl shadow-sm p-4 md:p-6">
         <h2 class="font-semibold mb-4">💶 Prix & vente</h2>
-        <div class="grid gap-4 md:grid-cols-3">
-            <label class="{{ $label }}">Prix neuf / MSRP (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="estimated_msrp" class="{{ $input }}" value="{{ old('estimated_msrp', $item->estimated_msrp) }}"></label>
-            <label class="{{ $label }}">Prix affiché (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="asking_price" class="{{ $input }}" value="{{ old('asking_price', $item->asking_price) }}"></label>
-            <label class="{{ $label }}">Prix plancher (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="bottom_price" class="{{ $input }}" value="{{ old('bottom_price', $item->bottom_price) }}"></label>
-            <label class="{{ $label }}">Date de mise en vente<input type="date" name="listing_date" class="{{ $input }}" value="{{ old('listing_date', $date($item->listing_date)) }}"></label>
-            <label class="{{ $label }} md:col-span-2">Lien de l'annonce (Marketplace, Kijiji, eBay…)<input type="url" inputmode="url" name="marketplace_url" placeholder="https://" class="{{ $input }}" value="{{ old('marketplace_url', $item->marketplace_url) }}"></label>
-            <label class="{{ $label }} md:col-span-2">Lien de la fiche produit chez le vendeur principal<input type="url" inputmode="url" name="supplier_product_url" placeholder="https://" class="{{ $input }}" value="{{ old('supplier_product_url', $item->supplier_product_url) }}"></label>
-            <label class="{{ $label }}">Prix de vente final (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="final_sale_price" class="{{ $input }}" value="{{ old('final_sale_price', $item->final_sale_price) }}"></label>
-            <label class="{{ $label }}">Date de vente<input type="date" name="sale_date" class="{{ $input }}" value="{{ old('sale_date', $date($item->sale_date)) }}"></label>
+        <div class="grid gap-5">
+            <div class="grid gap-4 md:grid-cols-3">
+                <h3 class="font-medium text-sm text-slate-700 md:col-span-3">Mise en vente</h3>
+                <label class="{{ $label }}">Prix affiché (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="asking_price" class="{{ $input }}" value="{{ old('asking_price', $item->asking_price) }}"></label>
+                <label class="{{ $label }}">Prix plancher (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="bottom_price" class="{{ $input }}" value="{{ old('bottom_price', $item->bottom_price) }}"></label>
+                <label class="{{ $label }}">Date de mise en vente<input type="date" name="listing_date" class="{{ $input }}" value="{{ old('listing_date', $date($item->listing_date)) }}"></label>
+                <label class="{{ $label }} md:col-span-2">Lien de l'annonce (Marketplace, Kijiji, eBay…)<input type="url" inputmode="url" name="marketplace_url" placeholder="https://" class="{{ $input }}" value="{{ old('marketplace_url', $item->marketplace_url) }}"></label>
+            </div>
+
+            <div class="grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-3">
+                <h3 class="font-medium text-sm text-slate-700 md:col-span-3">Vente finale</h3>
+                <label class="{{ $label }}">Prix de vente final (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="final_sale_price" class="{{ $input }}" value="{{ old('final_sale_price', $item->final_sale_price) }}"></label>
+                <label class="{{ $label }}">Date de vente<input type="date" name="sale_date" class="{{ $input }}" value="{{ old('sale_date', $date($item->sale_date)) }}"></label>
+            </div>
+
+            <div class="grid gap-4 border-t border-slate-200 pt-4 md:grid-cols-3">
+                <h3 class="font-medium text-sm text-slate-700 md:col-span-3">Prix neuf et vendeur principal</h3>
+                <label class="{{ $label }}">Prix neuf / MSRP (€)<input type="number" inputmode="decimal" step="0.01" min="0" name="estimated_msrp" class="{{ $input }}" value="{{ old('estimated_msrp', $item->estimated_msrp) }}"></label>
+                <label class="{{ $label }} md:col-span-2">Lien de la fiche produit chez le vendeur principal<input type="url" inputmode="url" name="supplier_product_url" placeholder="https://" class="{{ $input }}" value="{{ old('supplier_product_url', $item->supplier_product_url) }}"></label>
+            </div>
         </div>
         <p class="text-xs text-slate-500 mt-3">Prix final requis si le statut est « Vendu ». Le prix d'achat unitaire est calculé au pro-rata du MSRP.</p>
     </section>
