@@ -4,12 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PalletRequest;
 use App\Models\Pallet;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 
 class PalletController extends Controller
 {
-    public function index()
+    public function index(Request $request): View
     {
-        return view('pallets.index', ['pallets' => Pallet::withCount('items')->with('items')->latest('purchase_date')->paginate(15)]);
+        $filters = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+        $pallets = Pallet::withCount('items')
+            ->with('items')
+            ->latest('purchase_date')
+            ->paginate((int) ($filters['per_page'] ?? 15))
+            ->withQueryString();
+
+        return view('pallets.index', compact('pallets'));
     }
 
     public function create()

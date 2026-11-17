@@ -28,5 +28,11 @@
     </tbody>
     </table>
 </div>
-<div class="mt-4">{{ $pallets->links() }}</div>
+<div class="mt-4 flex flex-col gap-3">
+    {{ $pallets->links() }}
+    <x-pagination-size-selector
+        :paginator="$pallets"
+        :action="route('pallets.index')"
+    />
+</div>
 @endsection

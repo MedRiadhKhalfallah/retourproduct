@@ -133,6 +133,33 @@ class MarketplaceFeaturesTest extends TestCase
         $this->get('/')->assertOk();
     }
 
+    public function test_paginated_lists_allow_changing_page_size_and_preserve_filters(): void
+    {
+        $this->get(route('items.index', [
+            'search' => 'Lampe',
+            'status' => ItemStatus::Sold->value,
+            'per_page' => 25,
+        ]))
+            ->assertOk()
+            ->assertSee('value="25" selected', false)
+            ->assertSee('type="hidden" name="per_page" value="25"', false)
+            ->assertSee('type="hidden" name="search" value="Lampe"', false)
+            ->assertSee('type="hidden" name="status" value="'.ItemStatus::Sold->value.'"', false);
+
+        $this->get(route('pallets.index', ['per_page' => 25]))
+            ->assertOk()
+            ->assertSee('value="25" selected', false);
+    }
+
+    public function test_paginated_lists_reject_page_sizes_over_one_hundred(): void
+    {
+        $this->get(route('items.index', ['per_page' => 101]))
+            ->assertSessionHasErrors('per_page');
+
+        $this->get(route('pallets.index', ['per_page' => 101]))
+            ->assertSessionHasErrors('per_page');
+    }
+
     public function test_replacing_or_deleting_an_item_removes_its_database_photo(): void
     {
         $pallet = $this->pallet();

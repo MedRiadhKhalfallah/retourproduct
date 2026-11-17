@@ -38,6 +38,7 @@
         <p class="text-sm text-slate-500">Rechercher un produit et filtrer par responsable.</p>
     </div>
     <form method="GET" action="{{ route('dashboard') }}" class="mb-4 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+        <input type="hidden" name="per_page" value="{{ $items->perPage() }}">
         <input type="search" name="search" value="{{ $filters['search'] ?? '' }}"
             placeholder="Nom, SKU, annonce ou fiche vendeur…"
             class="w-full min-w-0 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-200">
@@ -51,7 +52,14 @@
         <button class="w-full rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white hover:bg-slate-700 sm:w-auto">Rechercher</button>
     </form>
     @include('items._table', ['items' => $items, 'showPallet' => true])
-    <div class="mt-4">{{ $items->links() }}</div>
+    <div class="mt-4 flex flex-col gap-3">
+        {{ $items->links() }}
+        <x-pagination-size-selector
+            :paginator="$items"
+            :action="route('dashboard')"
+            :preserved-query="$filters"
+        />
+    </div>
 </section>
 
 <h2 class="mb-2 text-lg font-semibold">Rentabilité par palette</h2>
@@ -72,11 +80,18 @@
         </tr>
         <tr class="border-t bg-slate-50">
             <td class="p-2 pl-4 text-slate-600" colspan="6">
-                <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <div class="flex flex-col gap-2">
                     <span class="font-medium">Ventes finales par vendeur :</span>
                     @if ($assignees->isNotEmpty())
                         @foreach ($assignees as $assignee)
-                            <span>{{ $assignee->name }} : {{ number_format($sellerRevenueByPallet[$p->id][$assignee->id] ?? 0, 2) }} €</span>
+                            <a
+                                href="{{ route('items.index', ['assigned_to' => $assignee->id, 'search' => '', 'status' => \App\Enums\ItemStatus::Sold->value]) }}"
+                                aria-label="Voir les articles vendus par {{ $assignee->name }}"
+                                class="flex max-w-sm items-center justify-between gap-4 text-blue-700 hover:underline"
+                            >
+                                <span>{{ $assignee->name }}</span>
+                                <span>{{ number_format($sellerRevenueByPallet[$p->id][$assignee->id] ?? 0, 2) }} €</span>
+                            </a>
                         @endforeach
                     @else
                         <span>Aucun vendeur configuré.</span>

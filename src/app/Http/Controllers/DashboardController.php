@@ -25,6 +25,7 @@ class DashboardController extends Controller
                 'nullable',
                 Rule::in([...$assignees->modelKeys(), 'unassigned']),
             ],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $byStatus = Item::selectRaw('status, count(*) as n')->groupBy('status')->pluck('n', 'status');
@@ -46,7 +47,7 @@ class DashboardController extends Controller
                 }
             })
             ->latest()
-            ->paginate(12)
+            ->paginate((int) ($filters['per_page'] ?? 12))
             ->withQueryString();
 
         $sellerRevenueByPallet = $pallets->mapWithKeys(function (Pallet $pallet) use ($assignees): array {

@@ -22,6 +22,7 @@
     </div>
 </div>
 <form method="GET" action="{{ route('items.index') }}" role="search" aria-label="Rechercher et filtrer les articles" class="mb-4 flex flex-col gap-3 rounded-2xl bg-white p-3 shadow-sm sm:flex-row sm:items-center">
+    <input type="hidden" name="per_page" value="{{ $items->perPage() }}">
     @if ($current)<input type="hidden" name="assigned_to" value="{{ $current }}">@endif
     <div class="min-w-0 flex-1">
         <label for="item-search" class="sr-only">Rechercher par nom, ID, SKU ou référence</label>
@@ -49,5 +50,12 @@
     @endforeach
 </div>
 @include('items._cards', ['items' => $items, 'showPallet' => true])
-<div class="mt-4">{{ $items->links() }}</div>
+<div class="mt-4 flex flex-col gap-3">
+    {{ $items->links() }}
+    <x-pagination-size-selector
+        :paginator="$items"
+        :action="route('items.index')"
+        :preserved-query="$filters"
+    />
+</div>
 @endsection

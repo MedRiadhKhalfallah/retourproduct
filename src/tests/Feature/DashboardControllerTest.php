@@ -54,8 +54,20 @@ class DashboardControllerTest extends TestCase
             ->assertSee('Prix de vente final')
             ->assertDontSee('Plancher')
             ->assertSee('Ventes finales par vendeur')
-            ->assertSee('Vendeur A : 80.00 €')
-            ->assertSee('Vendeur B : 0.00 €')
+            ->assertSee('Vendeur A')
+            ->assertSee('80.00 €')
+            ->assertSee('Vendeur B')
+            ->assertSee('0.00 €')
+            ->assertSee(route('items.index', [
+                'assigned_to' => $firstSeller->id,
+                'search' => '',
+                'status' => ItemStatus::Sold->value,
+            ]))
+            ->assertSee(route('items.index', [
+                'assigned_to' => $secondSeller->id,
+                'search' => '',
+                'status' => ItemStatus::Sold->value,
+            ]))
             ->assertSee('Revenu moyen par vendeur (Revenu généré ÷ 2 vendeurs)')
             ->assertSee('80,00 €')
             ->assertSee('40.00 €');
@@ -89,5 +101,24 @@ class DashboardControllerTest extends TestCase
             ->assertSee('Aucun vendeur configuré.')
             ->assertSee('Revenu moyen par vendeur (Revenu généré ÷ 0 vendeurs)')
             ->assertSee('—');
+    }
+
+    public function test_dashboard_page_size_selector_preserves_search_filters_and_rejects_oversized_values(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $this->get(route('dashboard', [
+            'search' => 'Lampe',
+            'assigned_to' => 'unassigned',
+            'per_page' => 25,
+        ]))
+            ->assertOk()
+            ->assertSee('value="25" selected', false)
+            ->assertSee('type="hidden" name="per_page" value="25"', false)
+            ->assertSee('type="hidden" name="search" value="Lampe"', false)
+            ->assertSee('type="hidden" name="assigned_to" value="unassigned"', false);
+
+        $this->get(route('dashboard', ['per_page' => 101]))
+            ->assertSessionHasErrors('per_page');
     }
 }

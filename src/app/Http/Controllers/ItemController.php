@@ -25,6 +25,7 @@ class ItemController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::enum(ItemStatus::class)],
             'assigned_to' => ['nullable', Rule::in([...$assignees->modelKeys(), 'unassigned'])],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
         $search = trim($filters['search'] ?? '');
         $status = $filters['status'] ?? null;
@@ -56,9 +57,9 @@ class ItemController extends Controller
 
                 $query->where('assigned_to', $assignedTo);
             })
-            ->latest()->paginate(20)->withQueryString();
+            ->latest()->paginate((int) ($filters['per_page'] ?? 20))->withQueryString();
 
-        return view('items.index', compact('items', 'assignees', 'search'));
+        return view('items.index', compact('items', 'assignees', 'search', 'filters'));
     }
 
     public function export(): StreamedResponse
