@@ -49,13 +49,35 @@ class DashboardController extends Controller
             ->paginate(12)
             ->withQueryString();
 
+        $sellerRevenueByPallet = $pallets->mapWithKeys(function (Pallet $pallet) use ($assignees): array {
+            $sellerRevenues = $assignees->mapWithKeys(function (User $assignee) use ($pallet): array {
+                $revenue = $pallet->items
+                    ->filter(function (Item $item) use ($assignee): bool {
+                        return $item->status === ItemStatus::Sold
+                            && $item->assigned_to !== null
+                            && (int) $item->assigned_to === $assignee->id;
+                    })
+                    ->sum('final_sale_price');
+
+                return [$assignee->id => (float) $revenue];
+            });
+
+            return [$pallet->id => $sellerRevenues->all()];
+        })->all();
+        $revenue = $pallets->sum->revenue;
+        $revenuePerSeller = $assignees->isNotEmpty()
+            ? round($revenue / $assignees->count(), 2)
+            : null;
+
         return view('dashboard', [
             'pallets' => $pallets,
             'items' => $items,
             'assignees' => $assignees,
+            'sellerRevenueByPallet' => $sellerRevenueByPallet,
             'filters' => $filters,
             'investment' => $pallets->sum('total_cost'),
-            'revenue' => $pallets->sum->revenue,
+            'revenue' => $revenue,
+            'revenuePerSeller' => $revenuePerSeller,
             'byStatus' => $byStatus,
             'toVerify' => ($byStatus[ItemStatus::Unverified->value] ?? 0) + ($byStatus[ItemStatus::Inspecting->value] ?? 0),
             'ready' => $byStatus[ItemStatus::Ready->value] ?? 0,

@@ -40,8 +40,8 @@
                     <dd class="font-medium text-slate-800">{{ $money($item->purchase_cost_share) }}</dd>
                 </div>
                 <div>
-                    <dt class="text-slate-500">Plancher</dt>
-                    <dd class="font-medium text-slate-800">{{ $money($item->bottom_price) }}</dd>
+                    <dt class="text-slate-500">Prix de vente final</dt>
+                    <dd class="font-medium text-slate-800">{{ $money($item->final_sale_price) }}</dd>
                 </div>
                 <div class="min-w-0">
                     <dt class="text-slate-500">Responsable</dt>

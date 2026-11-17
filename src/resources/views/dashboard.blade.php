@@ -70,10 +70,31 @@
             <td class="p-2 text-right {{ $p->profit >= 0 ? 'text-green-600' : 'text-red-600' }}">{{ number_format($p->profit, 2) }} €</td>
             <td class="p-2 text-right">{{ $p->profitability !== null ? $p->profitability.' %' : '—' }}</td>
         </tr>
+        <tr class="border-t bg-slate-50">
+            <td class="p-2 pl-4 text-slate-600" colspan="6">
+                <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <span class="font-medium">Ventes finales par vendeur :</span>
+                    @if ($assignees->isNotEmpty())
+                        @foreach ($assignees as $assignee)
+                            <span>{{ $assignee->name }} : {{ number_format($sellerRevenueByPallet[$p->id][$assignee->id] ?? 0, 2) }} €</span>
+                        @endforeach
+                    @else
+                        <span>Aucun vendeur configuré.</span>
+                    @endif
+                </div>
+            </td>
+        </tr>
     @empty
         <tr><td class="p-4 text-gray-500" colspan="6">Aucune palette.</td></tr>
     @endforelse
     </tbody>
+    <tfoot class="border-t-2 border-slate-300 bg-slate-50">
+        <tr>
+            <th class="p-2 text-left" colspan="3">Revenu moyen par vendeur (Revenu généré ÷ {{ $assignees->count() }} vendeur{{ $assignees->count() === 1 ? '' : 's' }})</th>
+            <td class="p-2 text-right font-semibold">{{ $revenuePerSeller !== null ? number_format($revenuePerSeller, 2).' €' : '—' }}</td>
+            <td class="p-2" colspan="2"></td>
+        </tr>
+    </tfoot>
     </table>
 </div>
 @endsection

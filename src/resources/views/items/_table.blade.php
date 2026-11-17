@@ -32,7 +32,7 @@
                 @if ($showPallet)<th class="p-3">Palette</th>@endif
                 <th class="p-3">Responsable</th>
                 <th class="p-3">Statut</th>
-                <th class="p-3 text-right">Coût</th><th class="p-3 text-right">Affiché</th><th class="p-3 text-right">Plancher</th><th class="p-3 text-right">Marge</th>
+                <th class="p-3 text-right">Coût</th><th class="p-3 text-right">Affiché</th><th class="p-3 text-right">Prix de vente final</th><th class="p-3 text-right">Marge</th>
                 <th class="p-3">Annonce</th>
             </tr>
         </thead>
@@ -50,7 +50,7 @@
                 <td class="p-3"><x-status-badge :status="$i->status" /></td>
                 <td class="p-3 text-right">{{ $money($i->purchase_cost_share) }}</td>
                 <td class="p-3 text-right">{{ $money($i->asking_price) }}</td>
-                <td class="p-3 text-right">{{ $money($i->bottom_price) }}</td>
+                <td class="p-3 text-right">{{ $money($i->final_sale_price) }}</td>
                 <td class="p-3 text-right">
                     @if ($i->margin !== null)
                         <span class="{{ $i->margin >= 0 ? 'text-emerald-600' : 'text-red-600' }}">{{ $money($i->margin) }} ({{ $i->margin_percent ?? '—' }} %)</span>
